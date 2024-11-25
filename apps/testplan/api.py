@@ -8,7 +8,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from fastapi import APIRouter, HTTPException, Depends
 from apps.projects.models import TestProject
-from apps.testplan.schemas import AddTaskForm, TaskSchema, UpdateTaskNameForm, AddSuiteToTaskForm
+from apps.testplan.schemas import AddTaskForm, TaskSchema, UpdateTaskNameForm, AddSuiteToTaskForm, TaskDetailSchema
 from .models import Tasks
 from common import auth
 from ..testmanage.models import Suite
@@ -75,3 +75,27 @@ async def delete_suite_from_task(id: int, suite_id: int):
     if not suite:
         raise HTTPException(status_code=422, detail='业务流不存在')
     await task.suite.remove(suite)
+
+
+# 获取测试任务详情（返回关联套件）
+@router.get("/tasks/{id}", tags=['测试任务'], summary="获取测试任务详情", response_model=TaskDetailSchema)
+async def get_task_detail(id: int):
+    task = await Tasks.get_or_none(id=id).prefetch_related("suite")
+    if not task:
+        raise HTTPException(status_code=422, detail='任务不存在')
+    suite_list = []
+    suites = await task.suite.all()
+    for suite in suites:
+        suite_list.append({
+            "suite_id": suite.id,
+            "suite_name": suite.name,
+            "suite_type": suite.suite_type,
+        })
+    result = {
+        "id": task.id,
+        "name": task.name,
+        "create_time": task.create_time,
+        "suites": suite_list,
+    }
+
+    return result
