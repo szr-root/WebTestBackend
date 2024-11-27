@@ -35,7 +35,7 @@ scheduler.add_job(my_task1,
 # 设置定时任务，2024年8月6号2点执行
 scheduler.add_job(my_task2,
                   id='date_task',
-                  trigger=DateTrigger(run_date='2024-11-25 17:07:00'),
+                  trigger=DateTrigger(run_date='2024-11-26 14:40:00'),
                   args=['定时任务'])
 
 

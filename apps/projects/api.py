@@ -2,7 +2,7 @@
 # @Author : John
 # @Time : 2024/11/08
 # @File : api.py
-from typing import List
+from typing import List, Dict
 
 from fastapi import APIRouter, HTTPException, Depends
 from .schemas import AddProjectForm, ProjectSchemas, UpdateProjectForm, AddEnvForm, TestEnvSchemas, UpdateEnvForm, \
@@ -16,7 +16,7 @@ router = APIRouter(prefix='/api/pro')
 
 # 创建项目
 @router.post('/projects', tags=["项目管理"], summary="创建项目", status_code=201, response_model=ProjectSchemas)
-async def create_project(item: AddProjectForm, user_info: dict = Depends(is_authenticated)):
+async def create_project(item: AddProjectForm, user_info: Dict = Depends(is_authenticated)):
     user = await Users.get_or_none(id=item.user)
     if not user:
         raise HTTPException(status_code=400, detail="用户不存在")
@@ -41,7 +41,7 @@ async def update_project(id: int, item: UpdateProjectForm, user_info: dict = Dep
 
 # 删除项目
 @router.delete("/projects/{id}/", tags=["项目管理"], summary="删除项目", status_code=204)
-async def delete_project(id: int, user_info: dict = Depends(is_authenticated)):
+async def delete_project(id: int, user_info: Dict = Depends(is_authenticated)):
     pro = await TestProject.get_or_none(id=id).prefetch_related("user")
     if not pro:
         raise HTTPException(status_code=422, detail="项目不存在")
@@ -52,7 +52,7 @@ async def delete_project(id: int, user_info: dict = Depends(is_authenticated)):
 
 # 获取项目列表
 @router.get("/projects/", tags=["项目管理"], summary="获取项目列表", status_code=200, response_model=List[ProjectSchemas])
-async def get_projects(user_info: dict = Depends(is_authenticated)):
+async def get_projects(user_info: Dict = Depends(is_authenticated)):
     # 超级管理员查看所有，普通用户只能查看自己的项目
     if user_info['is_superuser'] is True:
         pros = await TestProject.all().prefetch_related("user")
@@ -63,7 +63,7 @@ async def get_projects(user_info: dict = Depends(is_authenticated)):
 
 # 获取项目详情
 @router.get("/projects/{id}/", tags=["项目管理"], summary="获取单个项目详情", status_code=200, response_model=ProjectSchemas)
-async def get_project(id: int, user_info: dict = Depends(is_authenticated)):
+async def get_project(id: int, user_info: Dict = Depends(is_authenticated)):
     pro = await TestProject.get_or_none(id=id).prefetch_related("user")
     if not pro:
         raise HTTPException(status_code=422, detail="项目不存在")
@@ -74,7 +74,7 @@ async def get_project(id: int, user_info: dict = Depends(is_authenticated)):
 
 # 创建测试环境
 @router.post('/envs', tags=['测试环境管理'], summary='创建测试环境', status_code=201, response_model=TestEnvSchemas)
-async def create_env(item: AddEnvForm, user_info: dict = Depends(is_authenticated)):
+async def create_env(item: AddEnvForm, user_info: Dict = Depends(is_authenticated)):
     # 方式一
     # env = await TestEnv.create(**item.dict())
     # 方式二
@@ -89,7 +89,7 @@ async def create_env(item: AddEnvForm, user_info: dict = Depends(is_authenticate
 
 # 获取测试环境列表
 @router.get('/envs', tags=['测试环境管理'], summary='获取测试环境列表', response_model=list[TestEnvSchemas])
-async def get_envs(project: int | None = None, user_info: dict = Depends(is_authenticated)):
+async def get_envs(project: int | None = None, user_info: Dict = Depends(is_authenticated)):
     query = TestEnv.all()
     if project:
         project = await TestProject.get_or_none(id=project)
@@ -100,7 +100,7 @@ async def get_envs(project: int | None = None, user_info: dict = Depends(is_auth
 
 # 获取单个测试环境详情
 @router.get('/envs/{id}', tags=['测试环境管理'], summary='获取单个测试环境详情', response_model=TestEnvSchemas)
-async def get_env(id: int, user_info: dict = Depends(is_authenticated)):
+async def get_env(id: int, user_info: Dict = Depends(is_authenticated)):
     env = await TestEnv.get_or_none(id=id)
     if not env:
         raise HTTPException(status_code=422, detail="环境不存在")
@@ -109,7 +109,7 @@ async def get_env(id: int, user_info: dict = Depends(is_authenticated)):
 
 # 删除测试环境
 @router.delete('/envs/{id}', tags=['测试环境管理'], summary='删除测试环境', status_code=204)
-async def delete_env(id: int, user_info: dict = Depends(is_authenticated)):
+async def delete_env(id: int, user_info: Dict = Depends(is_authenticated)):
     env = await TestEnv.get_or_none(id=id)
     if not env:
         raise HTTPException(status_code=422, detail="环境不存在")
@@ -118,7 +118,7 @@ async def delete_env(id: int, user_info: dict = Depends(is_authenticated)):
 
 # 修改测试环境
 @router.put('/envs/{id}', tags=['测试环境管理'], summary='修改测试环境', response_model=TestEnvSchemas)
-async def update_env(id: int, item: UpdateEnvForm, user_info: dict = Depends(is_authenticated)):
+async def update_env(id: int, item: UpdateEnvForm, user_info: Dict = Depends(is_authenticated)):
     env = await TestEnv.get_or_none(id=id)
     if not env:
         raise HTTPException(status_code=422, detail="环境不存在")

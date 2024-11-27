@@ -59,6 +59,7 @@ app.include_router(project_router)
 app.include_router(test_router)
 app.include_router(plan_router)
 app.include_router(runenr_router)
+app.include_router(cron_router)
 
 if __name__ == '__main__':
     uvicorn.run(app, host="127.0.0.1", port=8000)
