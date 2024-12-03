@@ -12,7 +12,7 @@ class Users(models.Model):
     username = fields.CharField(max_length=32, unique=True, description="用户名")
     password = fields.CharField(max_length=128, description="密码")
     nickname = fields.CharField(max_length=32, description="用户昵称")
-    email = fields.CharField(max_length=255, description="邮箱", default="")
+    email = fields.CharField(max_length=255, description="邮箱", default="", null=True, blank=True)
     mobile = fields.CharField(max_length=128, null=True, blank=True, description="手机号", default="")
     is_active = fields.BooleanField(default=True, description="是否激活")
     is_superuser = fields.BooleanField(default=False, description="是否是超级管理员")

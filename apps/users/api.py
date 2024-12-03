@@ -38,10 +38,10 @@ async def register(item: RegisterForm):
     if await Users.get_or_none(username=item.username):
         raise HTTPException(status_code=422, detail="用户名已存在")
     # 校验邮箱是否已存在
-    if await Users.get_or_none(email=item.email):
+    if item.email and await Users.get_or_none(email=item.email):
         raise HTTPException(status_code=422, detail="邮箱已存在")
     # 校验手机号是否已存在
-    if await Users.get_or_none(mobile=item.mobile):
+    if item.phone and await Users.get_or_none(mobile=item.mobile):
         raise HTTPException(status_code=422, detail="手机号已存在")
     # 注册用户
     item.__dict__.pop('password_confirm')
