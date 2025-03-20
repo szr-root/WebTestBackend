@@ -2,7 +2,7 @@ import uvicorn
 from fastapi import FastAPI
 from common import settings
 from tortoise.contrib.fastapi import register_tortoise
-from starlette.middleware.cors import CORSMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 

@@ -50,6 +50,7 @@ class CasesSchemas(BaseModel):
 class AddCasesForm(BaseModel):
     name: str = Field(description="用例名称")
     project_id: int = Field(description="所属项目")
+    steps: List = Field(description="用例执行步骤")
 
 
 class UpdateCasesForm(BaseModel):

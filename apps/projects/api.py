@@ -6,7 +6,7 @@ from typing import List, Dict
 
 from fastapi import APIRouter, HTTPException, Depends
 from .schemas import AddProjectForm, ProjectSchemas, UpdateProjectForm, AddEnvForm, TestEnvSchemas, UpdateEnvForm, \
-    ProjectModuleSchemas, AddModuleForm, UpdateModuleForm
+    ProjectModuleSchemas, AddModuleForm, UpdateModuleForm, ProListSchemas, ProjectPageListSchemas
 from .models import TestProject, TestEnv, ProjectModule
 from apps.users.models import Users
 from common.auth import is_authenticated
@@ -33,7 +33,7 @@ async def update_project(id: int, item: UpdateProjectForm, user_info: dict = Dep
     if not pro:
         raise HTTPException(status_code=422, detail="项目不存在")
     if (pro.user.id != user_info['id']) and user_info['is_superuser'] is not True:
-        raise HTTPException(status_code=400, detail="用户只能修改自己创建的项目")
+        raise HTTPException(status_code=400, detail="非管理员用户只能修改自己创建的项目")
     pro.name = item.name
     await pro.save()
     return pro
@@ -46,19 +46,40 @@ async def delete_project(id: int, user_info: Dict = Depends(is_authenticated)):
     if not pro:
         raise HTTPException(status_code=422, detail="项目不存在")
     if (pro.user.id != user_info['id']) and user_info['is_superuser'] is not True:
-        raise HTTPException(status_code=400, detail="用户只能删除自己创建的项目")
+        raise HTTPException(status_code=400, detail="非管理员用户只能删除自己创建的项目")
     await pro.delete()
 
 
 # 获取项目列表
-@router.get("/projects/", tags=["项目管理"], summary="获取项目列表", status_code=200, response_model=List[ProjectSchemas])
-async def get_projects(user_info: Dict = Depends(is_authenticated)):
+@router.get("/projects/", tags=["项目管理"], summary="获取项目列表", status_code=200, response_model=ProjectPageListSchemas)
+async def get_projects(user_info: Dict = Depends(is_authenticated), page: int = 1, size: int = 10):
+    """
+    项目列表，添加分页参数
+    :param user_info:
+    :param page:页码
+    :param size:每页数量
+    :return: 项目列表
+    """
     # 超级管理员查看所有，普通用户只能查看自己的项目
-    if user_info['is_superuser'] is True:
-        pros = await TestProject.all().prefetch_related("user")
-    else:
-        pros = await TestProject.filter(user=user_info['id']).prefetch_related("user")
-    return pros
+    # if user_info['is_superuser'] is True:
+    #     query = TestProject.all().prefetch_related("user")
+    # else:
+    query = TestProject.all().prefetch_related("user")
+    # query = TestProject.filter(user=user_info['id']).prefetch_related("user")
+
+    total = await query.count()
+    projects = await query.offset((page - 1) * size).limit(size)
+    # return pros
+    res = []
+    datas = [{
+        "id": pro.id,
+        "name": pro.name,
+        "user": pro.user.nickname,
+        "create_time": pro.create_time.strftime("%Y-%m-%d %H:%M:%S")
+    } for pro in projects]
+    # for data in datas:
+    #     res.append(ProListSchemas(**data.__dict__))
+    return ProjectPageListSchemas(data=datas, page=page, size=size, total=total)
 
 
 # 获取项目详情
@@ -141,14 +162,18 @@ async def create_module(item: AddModuleForm, user_info: dict = Depends(is_authen
 
 # 获取测试模块列表
 @router.get('/modules', tags=['测试模块管理'], summary='获取测试模块列表')
-async def get_modules(project: int | None = None, user_info: dict = Depends(is_authenticated)):
+async def get_modules(project_id: int | None = None, user_info: dict = Depends(is_authenticated)):
     query = ProjectModule.all()
-    if project:
-        project = await TestProject.get_or_none(id=project)
+    if project_id:
+        project = await TestProject.get_or_none(id=project_id)
         query = query.filter(project=project)
 
     modules = await query
-    return modules
+    data = [ProjectModuleSchemas(
+        **mod.__dict__,
+        suites=await mod.suites.all().count()
+    ) for mod in modules]
+    return data
 
 
 # 获取单个测试模块详情

@@ -24,13 +24,19 @@ class UpdateProjectForm(BaseModel):
     name: str = Field(description="项目名称", max_length=20)
 
 
-class ProListSchemas(ProjectSchemas):
-    user_name: str = Field(description="项目负责人")
+class ProListSchemas(BaseModel):
+    id: int = Field(description="项目id")
+    name: str = Field(description="项目名称", max_length=20)
+    user: str = Field(description="项目负责人")
+    create_time: datetime = Field(description="创建时间")
+
 
 
 class ProjectPageListSchemas(BaseModel):
-    total: int = Field(description="总数")
     data: List[ProListSchemas] = Field(description="数据")
+    total: int = Field(description="项目总数")
+    size: int = Field(description="每页数量")
+    page: int = Field(description="当前页码")
 
 
 # =====================================测试环境相关的接口=================================
@@ -64,6 +70,7 @@ class ProjectModuleSchemas(BaseModel):
     name: str = Field(description="模块名称")
     project_id: int = Field(description="所属项目")
     create_time: datetime = Field(description="创建时间")
+    suites: int = Field(description="模块下测试套件数量")
 
 
 class AddModuleForm(BaseModel):
