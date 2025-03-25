@@ -108,7 +108,7 @@ async def run_test_task(task_id, env_id):
 
 
 # 创建定时任务
-@router.post('/crontab', tags=['定时任务'], summary="创建定时任务", status_code=201)
+@router.post('/crontab/', tags=['定时任务'], summary="创建定时任务", status_code=201)
 async def create_crontab(item: CornJobFrom):
     corn_task_id = str(int(time.time() * 1000))
 
@@ -148,6 +148,8 @@ async def create_crontab(item: CornJobFrom):
                 name=item.name,
                 kwargs={"task_id": item.task, "env_id": item.env}
             )
+            print('job_time:', corn_task_id)
+            item.date = date.astimezone(pytz.utc).strftime('%Y-%m-%d %H:%M:%S')
             corn = await CornJob.create(id=corn_task_id, name=item.name, project_id=item.project, task_id=item.task,
                                         env_id=item.env, run_type=item.run_type, interval=item.interval,
                                         date=item.date, crontab=item.crontab.dict(), state=item.state)
@@ -156,7 +158,7 @@ async def create_crontab(item: CornJobFrom):
             await cron_tran.rollback()
             # 取消定时任务
             scheduler.remove_job(corn_task_id)
-            raise HTTPException(status_code=422, detail='创建失败')
+            raise HTTPException(status_code=422, detail=f'创建失败,{e}')
         else:
             await cron_tran.commit()
             return corn
@@ -165,10 +167,25 @@ async def create_crontab(item: CornJobFrom):
 # 获取定时任务列表
 @router.get('/crontab', tags=['定时任务'], summary="获取定时任务列表")
 async def get_crontab_list(project: int):
-    return await CornJob.filter(project_id=project).all()
+    crons = await CornJob.filter(project_id=project).all().prefetch_related('env', 'task')
+
+    return [{
+        "id": cron.id,
+        "name": cron.name,
+        "create_time": cron.create_time,
+        "task_id": cron.task.id,
+        "task_name": cron.task.name if cron.task else None,
+        "env_id": cron.env.id,
+        "env_name": cron.env.name if cron.env else None,
+        "run_type": cron.run_type,
+        "interval": cron.interval,
+        "date": cron.date,
+        "crontab": cron.crontab,
+        "state": cron.state,
+    } for cron in crons]
 
 
-# 暂停/恢复定时任务
+# todo 感觉有bug，有时修改定时任务时，没有修改成功，，也可能是redis没有该条数据的原因，后续可能需要排查
 @router.patch('/crontab/{id}', tags=['定时任务'], summary="暂停/恢复定时任务")
 async def update_crontab(id: str):
     corn = await CornJob.get_or_none(id=id)
@@ -187,7 +204,7 @@ async def update_crontab(id: str):
             await corn.save()
         except Exception as e:
             await cron_tran.rollback()
-            raise HTTPException(status_code=422, detail='操作失败')
+            raise HTTPException(status_code=422, detail=f'操作失败:{e}')
         else:
             await cron_tran.commit()
         return corn
@@ -226,6 +243,8 @@ async def update_job(id: str, item: UpdagteCornJobFrom):
             trigger = CronTrigger(**item.crontab.dict(), timezone=local_timezone)
 
         scheduler.modify_job(id, trigger=trigger)
+        # 将时间转成utc时间存到数据，数据库保存时utc
+        item.date = date.astimezone(pytz.utc).strftime('%Y-%m-%d %H:%M:%S')
         await corn.update_from_dict(item.dict(exclude_unset=True)).save()
 
     except Exception as e:

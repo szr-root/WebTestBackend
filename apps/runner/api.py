@@ -175,15 +175,30 @@ async def run_tasks(id: int, item: RunForm):
 
 # 获取测试任务运行记录
 @router.get('/tasks/records', tags=['测试报告'], summary='获取测试任务所有运行记录')
-async def get_task_records(project_id: int, task_id: int = None, page: int = 1, page_size: int = 10):
+async def get_task_records(project_id: int, task_id: int = None, page: int = 1, size: int = 10):
     query = TaskRunRecords.filter(project=project_id)
     if task_id:
         query = query.filter(task=task_id)
 
     query = query.order_by('-id')
     total = await query.count()
-    data = await query.offset((page - 1) * page_size).limit(page_size).prefetch_related('task')
-    return {"total": total, "data": data}
+    data = await query.offset((page - 1) * size).limit(size).prefetch_related('task')
+    result = []
+    for i in data:
+        result.append({
+            "id": i.id,
+            "task_name": i.task.name if i.task else None,
+            "start_time": i.start_time,
+            "status": i.status,
+            "run_all": i.run_all,
+            'all': i.all,
+            "success": i.success,
+            "fail": i.fail,
+            "error": i.error,
+            "skip": i.skip,
+            "no_run": i.no_run,
+        })
+    return {"total": total, "data": result}
 
 
 #  获取测试套件运行记录

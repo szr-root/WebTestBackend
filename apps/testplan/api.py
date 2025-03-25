@@ -11,13 +11,14 @@ from apps.projects.models import TestProject
 from apps.testplan.schemas import AddTaskForm, TaskSchema, UpdateTaskNameForm, AddSuiteToTaskForm, TaskDetailSchema
 from .models import Tasks
 from common import auth
+from ..runner.models import TaskRunRecords
 from ..testmanage.models import Suite
 
 router = APIRouter(prefix="/api/plan")
 
 
 # 创建测试任务
-@router.post("/tasks", tags=['测试任务'], summary="创建测试任务", status_code=201, response_model=TaskSchema)
+@router.post("/tasks/", tags=['测试任务'], summary="创建测试任务", status_code=201, response_model=TaskSchema)
 async def create_task(item: AddTaskForm):
     project = await TestProject.get_or_none(id=item.project_id)
     if not project:
@@ -27,9 +28,22 @@ async def create_task(item: AddTaskForm):
 
 
 # 获取测试任务列表
-@router.get("/tasks", tags=['测试任务'], summary="获取测试任务列表", response_model=List[TaskSchema])
+@router.get("/tasks", tags=['测试任务'], summary="获取测试任务列表")
 async def get_tasks(project_id: int):
-    return await Tasks.filter(project_id=project_id).all()
+    tasks = await Tasks.filter(project_id=project_id).all().prefetch_related('suite')
+    result = []
+    for task in tasks:
+        result.append({
+            "id": task.id,
+            "name": task.name,
+            "create_time": task.create_time,
+            # 套件数量
+            "suites_count": len(task.suite),
+            # 历史执行次数
+            "run_times": await TaskRunRecords.filter(task=task).count(),
+        })
+    return result
+    # return await Tasks.filter(project_id=project_id).all()
 
 
 # 删除测试任务
