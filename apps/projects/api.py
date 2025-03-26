@@ -150,8 +150,7 @@ async def update_env(id: int, item: UpdateEnvForm, user_info: Dict = Depends(is_
 
 # ===================================测试模块的增删查改接口==============================================
 # 创建测试模块
-@router.post('/modules', tags=['测试模块管理'], summary='创建测试模块', status_code=201,
-             response_model=ProjectModuleSchemas)
+@router.post('/modules/', tags=['测试模块管理'], summary='创建测试模块', status_code=201)
 async def create_module(item: AddModuleForm, user_info: dict = Depends(is_authenticated), ):
     project = await TestProject.get_or_none(id=item.project_id)
     if not project:
