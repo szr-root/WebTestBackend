@@ -12,6 +12,7 @@ from apps.testmanage.api import router as test_router
 from apps.testplan.api import router as plan_router
 from apps.runner.api import router as runenr_router
 from apps.crontab.api import router as cron_router
+from apps.device.api import router as device_router
 
 app = FastAPI(
     title="Web测试平台接口文档",
@@ -60,6 +61,7 @@ app.include_router(test_router)
 app.include_router(plan_router)
 app.include_router(runenr_router)
 app.include_router(cron_router)
+app.include_router(device_router)
 
 if __name__ == '__main__':
     uvicorn.run(app, host="127.0.0.1", port=8000)

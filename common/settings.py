@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     'apps.testplan.models',
     'apps.runner.models',
     'apps.crontab.models',
+    'apps.device.models'
 ]
 
 # tortoise的基本配置
