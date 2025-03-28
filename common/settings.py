@@ -60,5 +60,6 @@ REDIS_CONFIG = {
     "host": "localhost",
     "port": 6379,
     "db": 15,
+    "db_subscribe": 3,
     "password": "qwe123"
 }

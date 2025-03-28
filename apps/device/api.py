@@ -2,12 +2,15 @@
 # @Author : John
 # @Time : 2025/03/27
 # @File : api.py
+import json
 from typing import List, Dict
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, WebSocket
 from apps.device.models import Device
 from common.auth import is_authenticated
 from .schemas import AddDeviceSchema
+from redis.asyncio import Redis
+from common.settings import REDIS_CONFIG
 
 router = APIRouter(prefix='/api/node', tags=['设备管理'])
 
@@ -55,3 +58,37 @@ async def delete_device(id: int, user_info: Dict = Depends(is_authenticated)):
         raise HTTPException(status_code=404, detail='设备不存在')
     await device.delete()
     return {'message': '设备已删除'}
+
+
+# 订阅的websocket接口
+@router.websocket('/ws/{device_id}')
+async def websocket_subscribe(websocket: WebSocket, device_id: str):
+    """websocket接口，订阅设备画面和日志"""
+    # 链接redis
+    redis_cli = Redis(host=REDIS_CONFIG.get('host'), port=REDIS_CONFIG.get('port'),
+                      db=REDIS_CONFIG.get('db_subscribe'), password=REDIS_CONFIG.get('password'))
+
+    await websocket.accept()
+    # 初始化订阅器
+    pubsub = redis_cli.pubsub()
+    try:
+        # 订阅频道
+        await pubsub.subscribe(f'{device_id}:screen')
+        # 循环接受订阅消息
+        async for message in pubsub.listen():
+            try:
+                if message['type'] == 'message':
+                    # 获取消息内容
+                    data = json.dumps({
+                        "type": "screen",
+                        "data": message['data'].decode()
+                    })
+                    # 接收到消息，发送给客户端
+                    await websocket.send_text(data)
+            except Exception as e:
+                print(f'订阅数据处理发生错误: {e}')
+    except Exception as e:
+        await redis_cli.close()
+        print('websocket连接错误')
+        # 取消订阅事件
+        await pubsub.unsubscribe(f'{device_id}:screen')
