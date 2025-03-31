@@ -7,7 +7,7 @@ import datetime
 import time
 import pytz
 
-from common.rabbitmq_producer import mq
+from common.rabbitmq_producer import MQProducer
 from common.settings import REDIS_CONFIG
 from fastapi import APIRouter, HTTPException
 from .schemas import CornJobFrom, UpdagteCornJobFrom
@@ -72,6 +72,7 @@ async def run_test_task(task_id, env_id):
         # 创建一条任务执行的记录
         task_record = await TaskRunRecords.create(task=task, env=env_config, project=task.project)
         task_count = 0
+        mq = MQProducer()
         for suite in await task.suite.all():
             cases = []
             suite_ = await Suite.get_or_none(id=suite.id).prefetch_related('cases')
@@ -98,13 +99,11 @@ async def run_test_task(task_id, env_id):
                 'cases': cases
             }
             mq.send_test_task(env_config, run_suite)
-
+        mq.close()
         # 修改任务中的用例总数
         task_record.all = task_count
         await task_record.save()
     print("任务执行提交", task_id, env_id)
-
-    # print("执行了", task_id, env_id)
 
 
 # 创建定时任务

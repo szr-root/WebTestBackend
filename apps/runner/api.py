@@ -2,6 +2,7 @@
 # @Author : John
 # @Time : 2024/11/12
 # @File : api.py
+import time
 from typing import Annotated, List
 
 from fastapi import APIRouter, HTTPException
@@ -10,7 +11,7 @@ from apps.projects.models import TestEnv
 from apps.runner.schemas import RunForm, SuiteInfoSchemas, TaskResultsSchemas
 from apps.testmanage.models import Cases, Suite
 from apps.testplan.models import Tasks
-from common.rabbitmq_producer import mq
+from common.rabbitmq_producer import MQProducer
 from .models import TaskRunRecords, SuiteRunRecords, CaseRunRecords
 from tortoise.transactions import in_transaction
 
@@ -66,10 +67,12 @@ async def run_cases(id: int, item: RunForm):
         # 调用引擎执行用例
         # runner = Runner(env_config, run_suite)
         # res = runner.run()
-
+        time_id = int(time.time() * 1000)
         # =====================将执行任务提交到任务队列中(RabbitMQ)=================
-        mq.send_test_task(env_config, run_suite)
-    return {"msg": "用例执行任务已提交，等待执行", "case_record": case_record.id}
+        mq = MQProducer()
+        mq.send_test_task(env_config, run_suite, time_id)
+        mq.close()
+    return {"msg": "用例执行任务已提交，等待执行", "time_id": time_id}
 
 
 # 执行套件
@@ -115,8 +118,11 @@ async def run_suites(id: int, item: RunForm):
             'setup_step': suite.suite_setup_step,
             'cases': cases
         }
-        mq.send_test_task(env_config, run_suite)
-    return {"msg": "套件执行任务已提交，等待执行", "suite_record_id": suite_record.id}
+        time_id = int(time.time() * 1000)
+        mq = MQProducer()
+        mq.send_test_task(env_config, run_suite, time_id)
+        mq.close()
+    return {"msg": "套件执行任务已提交，等待执行", "time_id": time_id}
 
 
 # 执行测试任务
@@ -140,6 +146,7 @@ async def run_tasks(id: int, item: RunForm):
         # 创建一条任务执行的记录
         task_record = await TaskRunRecords.create(task=task, env=env_config, project=task.project)
         task_count = 0
+        mq = MQProducer()
         for suite in await task.suite.all():
             cases = []
             suite_ = await Suite.get_or_none(id=suite.id).prefetch_related('cases')
@@ -165,12 +172,14 @@ async def run_tasks(id: int, item: RunForm):
                 'setup_step': suite_.suite_setup_step,
                 'cases': cases
             }
-            mq.send_test_task(env_config, run_suite)
+            time_id = int(time.time() * 1000)
 
+            mq.send_test_task(env_config, run_suite, time_id)
+        mq.close()
         # 修改任务中的用例总数
         task_record.all = task_count
         await task_record.save()
-    return {"msg": "任务已提交，等待执行", "task_record_id": task_record.id}
+    return {"msg": "任务已提交，等待执行", "time_id": time_id}
 
 
 # 获取测试任务运行记录

@@ -19,19 +19,20 @@ class MQProducer:
         # 声明一个队列
         self.channel.queue_declare(queue=MQ_CONFIG.get('queue'))
 
-    def send_test_task(self, env_config, run_suite):
+    def send_test_task(self, env_config, run_suite, time_id):
         # 发送消息
         data = {
             "env_config": env_config,
-            "run_suite": run_suite
+            "run_suite": run_suite,
+            "time_id": time_id
         }
         msg = json.dumps(data, ensure_ascii=False).encode('utf-8')
         self.channel.basic_publish(exchange='', routing_key=MQ_CONFIG.get('queue'), body=msg)
 
-    def __del__(self):
+    def close(self):
         # 关闭连接
         self.connection.close()
 
 
 # 单例
-mq = MQProducer()
+# mq = MQProducer()

@@ -17,11 +17,12 @@ router = APIRouter(prefix='/api/node', tags=['设备管理'])
 
 # 注册(创建)设备
 @router.post('/devices', summary='注册设备', status_code=201)
-async def register_device(item: AddDeviceSchema, user_info: Dict = Depends(is_authenticated)):
-    if not user_info['is_superuser']:
-        raise HTTPException(status_code=403, detail='权限不足')
-    if await Device.get_or_none(id=item.id):
-        raise HTTPException(status_code=400, detail='设备已存在')
+# async def register_device(item: AddDeviceSchema, user_info: Dict = Depends(is_authenticated)):
+async def register_device(item: AddDeviceSchema):
+    # if not user_info['is_superuser']:
+    #     raise HTTPException(status_code=403, detail='权限不足')
+    # if await Device.get_or_none(id=item.id):
+    #     raise HTTPException(status_code=400, detail='设备已存在')
     try:
         device = await Device.create(**item.dict())
         return device
@@ -73,18 +74,28 @@ async def websocket_subscribe(websocket: WebSocket, device_id: str):
     pubsub = redis_cli.pubsub()
     try:
         # 订阅频道
-        await pubsub.subscribe(f'{device_id}:screen')
+        await pubsub.subscribe(f'{device_id}:screen', f'{device_id}:log')
         # 循环接受订阅消息
         async for message in pubsub.listen():
             try:
                 if message['type'] == 'message':
-                    # 获取消息内容
-                    data = json.dumps({
-                        "type": "screen",
-                        "data": message['data'].decode()
-                    })
-                    # 接收到消息，发送给客户端
-                    await websocket.send_text(data)
+                    # 判断频道
+                    if message['channel'].decode() == f'{device_id}:screen':
+                        # 获取消息内容
+                        data = json.dumps({
+                            "type": "screen",
+                            "data": message['data'].decode()
+                        })
+                        # 接收到消息，发送给客户端
+                        await websocket.send_text(data)
+                    elif message['channel'].decode() == f'{device_id}:log':
+                        # 获取消息内容
+                        data = json.dumps({
+                            "type": "log",
+                            "data": message['data'].decode()
+                        })
+                        await websocket.send_text(data)
+
             except Exception as e:
                 print(f'订阅数据处理发生错误: {e}')
     except Exception as e:
@@ -92,3 +103,18 @@ async def websocket_subscribe(websocket: WebSocket, device_id: str):
         print('websocket连接错误')
         # 取消订阅事件
         await pubsub.unsubscribe(f'{device_id}:screen')
+
+
+# 根据time_id 获取设备信息
+@router.get('/devices/{time_id}', summary='根据time_id 获取设备信息')
+async def get_device_info(time_id: str, user_info: Dict = Depends(is_authenticated)):
+    # 根据redis获取设备信息
+    redis_cli = Redis(host=REDIS_CONFIG.get('host'), port=REDIS_CONFIG.get('port'),
+                      db=REDIS_CONFIG.get('db_subscribe'), password=REDIS_CONFIG.get('password'))
+    device_id = await redis_cli.get(time_id)
+    if not device_id:
+        raise HTTPException(status_code=422, detail='当前任务未运行，未分配执行设备')
+    else:
+        device_id = int(device_id.deconde())
+        device = await Device.get_or_none(id=device_id)
+        return device
