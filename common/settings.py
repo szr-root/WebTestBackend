@@ -5,12 +5,19 @@
 
 # 数据库的配置信息
 DATABASE = {
-    'host': 'localhost',
+    'host': '113.45.179.110',
     'port': 3306,
-    'user': 'root',
-    'password': 'songzhaoruizx',
+    'user': 'webtest',
+    'password': 'webtest',
     'database': 'webtest',
 }
+# DATABASE = {
+#     'host': 'localhost',
+#     'port': 3306,
+#     'user': 'root',
+#     'password': 'songzhaoruizx',
+#     'database': 'webtest',
+# }
 
 # 项目中的所以应用的models
 INSTALLED_APPS = [
@@ -57,7 +64,7 @@ MQ_CONFIG = {
 
 # ==========================Redis配置 ==========================
 REDIS_CONFIG = {
-    "host": "localhost",
+    "host": "113.45.179.110",
     "port": 6379,
     "db": 15,
     "db_subscribe": 3,

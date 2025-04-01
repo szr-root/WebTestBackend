@@ -115,6 +115,6 @@ async def get_device_info(time_id: str, user_info: Dict = Depends(is_authenticat
     if not device_id:
         raise HTTPException(status_code=422, detail='当前任务未运行，未分配执行设备')
     else:
-        device_id = int(device_id.deconde())
+        device_id = int(device_id.decode())
         device = await Device.get_or_none(id=device_id)
         return device
